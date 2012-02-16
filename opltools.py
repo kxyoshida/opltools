@@ -100,20 +100,6 @@ def makeoplreference(oplfile):
     ends = ends[1:,:]
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
 
-# def fixdiscontinuouspoint(oplfile,outputfile):
-#     thr = 5
-#     opl=genfromtxt(oplfile)
-#     def sqd(v1,v2):
-# 	return (v1[2]-v2[2])**2 + (v1[3]-v2[3])**2
-    
-#     sqthr=thr**2
-#     for i in r_[1:opl.shape[0]-1]:
-# 	if (opl[i-1,0]==opl[i+1,0]):
-# 	    if (sqd(opl[i,:],opl[i-1,:])>sqthr) and (sqd(opl[i,:],opl[i+1,:])>sqthr) and (sqd(opl[i-1,:],opl[i+1,:])<4*sqthr):
-# 		opl[i,2]=(opl[i-1,2]+opl[i+1,2])/2.0
-# 		opl[i,3]=(opl[i-1,3]+opl[i+1,3])/2.0
-#     savetxt(outputfile, opl, fmt='%d\t%d\t%10.5f\t%10.5f')
-
 def concatpolishdir(folderpath):
     """Concatenate Polished Spots files for reverse indexing"""
     xyzs = zeros([1,6])
@@ -126,20 +112,7 @@ def concatpolishdir(folderpath):
             xyzs=row_stack([xyzs,data])
     return xyzs[1:,:]
 
-# def reversemap(oplfile,polishdir):
-#     outputfile = oplfile[:-4]+"_revmap.txt"
-#     opl=genfromtxt(oplfile)
-#     xyzs=concatpolishdir(polishdir)
-#     tagged = zeros([1,4])
-#     for j in r_[:xyzs.shape(0)]:
-#         oid, X, Y, slice, cx, cy = xyzs[j,:]
-#         target = ( (opl[:,1]==slice) and (opl[:,2]==cx) and (opl[:,3]==cy) )
-#         sid = opl[target,0]
-#         tagged = vstack([tagged, r_[cx,cy,slice,sid]])
-#     tagged = tagged[1:,:]
-#     savetxt("xyzs.txt", tagged, fmt='%10.5f\t%10.5f\t%d\t%d')
-    
-def backtrace(oplfile,polishdir):
+def backtrace(oplfile,polishdir="PolishedSpots"):
     outputfile = oplfile[:-4]+"_backtraced.txt"
     opl=genfromtxt(oplfile)
     xyzs=concatpolishdir(polishdir)
@@ -147,18 +120,21 @@ def backtrace(oplfile,polishdir):
     if oplcolnum == 4:
         tagged = zeros([1,oplcolnum+1])
         for j in r_[:opl.shape[0]]:
-            sid, slice, cx, cy = opl[j,:4]
+            sid, slice, cx, cy = opl[j,:]
             #            target = (xyzs[:,3]==slice)
             target = ( (xyzs[:,3]==slice) & (xyzs[:,4]==cx) & (xyzs[:,5]==cy) )
             if target.any():
-                subid = xyzs[target,0]
+                if target.sum()==1:
+                    subid = xyzs[target,0]
+                else:
+                    subid = -target.sum()
             else:
                 subid = -1
             tagged = vstack([tagged, r_[opl[j,:],subid]])
         tagged = tagged[1:,:]
         savetxt(outputfile, tagged, fmt='%d\t%d\t%10.5f\t%10.5f\t%d')
 
-def backtraceref(oplfile,polishdir):
+def backtraceref(oplfile,polishdir="PolishedSpots"):
     outputfile = oplfile[:-4]+"_backtracedref.txt"
     opl=genfromtxt(oplfile)
     xyzs=concatpolishdir(polishdir)
@@ -169,12 +145,18 @@ def backtraceref(oplfile,polishdir):
             sid, slice1, cx1, cy1, slice2, cx2, cy2 = opl[j,:]
             target1 = ( (xyzs[:,3]==slice1) & (xyzs[:,4]==cx1) & (xyzs[:,5]==cy1) )
             if target1.any():
-                subid1 = xyzs[target1,0]
+                if target1.sum()==1:
+                    subid1 = xyzs[target1,0]
+                else:
+                    subid1 = -target1.sum()
             else:
                 subid1 = -1
             target2 = ( (xyzs[:,3]==slice2) & (xyzs[:,4]==cx2) & (xyzs[:,5]==cy2) )
             if target2.any():
-                subid2 = xyzs[target2,0]
+                if target2.sum()==1:
+                    subid2 = xyzs[target2,0]
+                else:
+                    subid2 = -target2.sum()
             else:
                 subid2 = -1
             tagged = vstack([tagged, r_[sid,slice1,cx1,cy1,subid1,slice2,cx2,cy2,subid2]])
