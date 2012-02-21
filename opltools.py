@@ -49,16 +49,18 @@ def findthebothends(oplfile, pickupfile):
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
 
 def removeoutsidetracks(oplfile):
-    "Use results table just tagged OnCell in ImageJ as an input file"
+    """Use results table just tagged OnCell in ImageJ as an input file.
+    Now adapted to Post-Track Polished opl"""
     if oplfile.find("OnCell"):
 	outputfile = oplfile.replace("OnCell", "cell")
     else:
 	outputfile = oplfile[:-11]+"_cell.txt"
     opl=genfromtxt(oplfile,skiprows=1)
-    idoutside=unique(opl[opl[:,5]==0,1])
+    coln = opl.shape[1]
+    idoutside=unique(opl[opl[:,-1]==0,1])
     abolish=asarray([opl[i,1] in idoutside for i in r_[:opl.shape[0]]])
-    oplinside=opl[abolish==False,1:5]
-    savetxt(outputfile, oplinside, fmt='%d\t%d\t%10.5f\t%10.5f')
+    oplinside=opl[abolish==False,1:-1]
+    savetxt(outputfile, oplinside, fmt='%d\t%d\t%10.5f\t%10.5f'+'\t%d'*clip(coln-6,0,4))
 
 def removeoutsidetrackswithdensity(oplfile):
     "Use results table just tagged OnCell in ImageJ as an input file"
@@ -99,6 +101,18 @@ def makeoplreference(oplfile):
 	    ends = vstack([ends, r_[opl[meet[0],:4], opl[meet[-1],1:4]]])
     ends = ends[1:,:]
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
+
+def makeptpoplreference(oplfile):
+    outputfile = oplfile[:-4]+"_ref.txt"	
+    opl=genfromtxt(oplfile)
+    ids = unique(opl[:,0])
+    ends = repeat(0,9)
+    for id in ids:
+	meet, = (opl[:,0]==id).nonzero()
+        if meet.size > 0:
+	    ends = vstack([ends, r_[opl[meet[0],:4], opl[meet[0],6], opl[meet[-1],1:4], opl[meet[-1],6]]])
+    ends = ends[1:,:]
+    savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%d\t%10.5f\t%10.5f\t%d')
 
 def concatpolishdir(folderpath):
     """Concatenate Polished Spots files for reverse indexing"""
@@ -166,9 +180,9 @@ def backtraceref(oplfile,polishdir="PolishedSpots"):
 def relatebacktracedopl(targetopl, refopl):
     """Relate two backtraced opl files.
     Tag the target opl_ref with the spot id of reference opl."""
-    assert targetopl.endswith("_backtracedref.txt")
+    assert targetopl.endswith("ref.txt")
     assert refopl.endswith("_backtraced.txt")
-    outputfile = targetopl.replace("_backtracedref","_linkoldid")    
+    outputfile = targetopl.replace("ref","linkoldid")    
     target = genfromtxt(targetopl)
     ref = genfromtxt(refopl)
     tagged = zeros([1,9])
