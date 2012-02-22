@@ -1,3 +1,5 @@
-(22 Feb 2012) vers 0.30: Not organised but works with "reassigntrk.py polished" 0.31
-
 A python module with a collection of utility scripts to process opl track files.
+
+(22 Feb 2012) vers 0.30: Not organised but works with "reassigntrk.py polished"
+
+(23 Feb 2012) vers 0.40: Now works with the output product of Polish_Track.java

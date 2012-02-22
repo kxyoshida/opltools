@@ -203,3 +203,46 @@ def relatebacktracedopl(targetopl, refopl):
         tagged = vstack([tagged, r_[sid,slice1,cx1,cy1,refid1,slice2,cx2,cy2,refid2]])
     tagged = tagged[1:,:]
     savetxt(outputfile, tagged, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%d\t%10.5f\t%10.5f\t%d')        
+
+def fixunpolished(oplfile):
+    """Fill the gaps in opl track file by interpolation, which was
+    produced by the failure of gaussian 2D fit in Polish_Track.java"""
+    
+    assert oplfile.endswith("_polish.txt")
+    outputfile = oplfile.replace("_polish","_pol")
+    
+    opl=genfromtxt(oplfile, skiprows=1)    
+    coln = opl.shape[1]
+    assert coln == 8
+
+    cids = unique(opl[:,1])
+    olist = repeat(0.0,5)    
+
+    for cid in cids:
+        pind, = where(opl[:,1]==cid)
+        subdata = opl[pind,:]
+        subdata = subdata[subdata[:,-1]==1,:]
+        if subdata.size != 0:
+            subind=subdata[:,2] - subdata[0,2]
+            pdata=zeros((max(subind)+1,5))
+            for i in r_[:max(subind)+1]:
+                if i in subind:
+                    pdata[i,:]=[subdata[subind==i,j] for j in [1,2,5,6,7]]
+                else:
+                    headind,=nonzero([j < i for j in subind])
+                    headlast=max(subind[headind])
+                    tailind,=nonzero([j > i for j in subind])
+                    tailfirst=min(subind[tailind])
+                    gaplength=tailfirst - headlast
+                    alpha=(i-headlast)*1.0/(tailfirst-headlast)
+                    interpol=[cid]
+                    for j in [2,5,6]:
+                        interpol=r_[interpol, subdata[subind==headlast,j]*(1.0-alpha)+subdata[subind==tailfirst,j]*alpha]
+
+                    interpol=r_[interpol,0]
+                    pdata[i,:] = interpol
+        olist = vstack([olist,pdata])
+      
+    olist = olist[1:,:]
+    savetxt(outputfile, olist, fmt='%d\t%d\t%10.5f\t%10.5f\t%d')
+
