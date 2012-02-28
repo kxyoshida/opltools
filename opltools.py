@@ -35,7 +35,7 @@ def findthebothends(oplfile, pickupfile):
     if oplfile[:4].isdigit():
 	outputfile = "BothEnds" + oplfile[:4] +".txt"
     else:
-	outputfile = "TerminalPosition.txt"
+	outputfile = "BothEnds.txt"
     opl=genfromtxt(oplfile)
     pickup=genfromtxt(pickupfile).astype('int64')
     ends = repeat(0,7)
@@ -47,6 +47,18 @@ def findthebothends(oplfile, pickupfile):
             #        ends[i,4:8] = opl[meet[-1],1:4]
     ends = ends[1:,:]
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
+
+def pickupgoodtrks(oplfile, pickupfile):
+    outputfile = oplfile.replace(".txt", "_gt.txt")
+    opl=genfromtxt(oplfile)
+    pickup=genfromtxt(pickupfile).astype('int64')
+    ends = repeat(0,opl.shape[1])
+    for i in r_[:pickup.size]:
+        meet, = (opl[:,0]==pickup[i]).nonzero()
+        if meet.size > 0:
+            ends = vstack([ends, opl[meet,:]])
+    ends = ends[1:,:]
+    savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f'+'\t%d'*clip(opl.shape[1]-4,0,4))
 
 def removeoutsidetracks(oplfile):
     """Use results table just tagged OnCell in ImageJ as an input file.
@@ -245,4 +257,48 @@ def fixunpolished(oplfile):
       
     olist = olist[1:,:]
     savetxt(outputfile, olist, fmt='%d\t%d\t%10.5f\t%10.5f\t%d')
+
+def fix_unpolished_com(oplfile):
+    """Fill the gaps in opl track file by interpolation, which was
+    produced by the failure of gaussian 2D fit in Polish_Track.java"""
+    
+    assert oplfile.endswith("_compolish.txt")
+    outputfile = oplfile.replace("_compolish","_compol")
+    
+    opl=genfromtxt(oplfile, skiprows=1)    
+    coln = opl.shape[1]
+    assert coln == 7
+
+    cids = unique(opl[:,1])
+    olist = repeat(0.0,5)    
+
+    for cid in cids:
+        pind, = where(opl[:,1]==cid)
+        subdata = opl[pind,:]
+        subdata = subdata[subdata[:,5]>=0,:]
+        subdata = subdata[subdata[:,6]>=0,:]
+        if subdata.size != 0:
+            subind=subdata[:,2] - subdata[0,2]
+            pdata=ones((max(subind)+1,5))
+            for i in r_[:max(subind)+1]:
+                if i in subind:
+                    pdata[i,:-1]=[subdata[subind==i,j] for j in [1,2,5,6]]
+                else:
+                    headind,=nonzero([j < i for j in subind])
+                    headlast=max(subind[headind])
+                    tailind,=nonzero([j > i for j in subind])
+                    tailfirst=min(subind[tailind])
+                    gaplength=tailfirst - headlast
+                    alpha=(i-headlast)*1.0/(tailfirst-headlast)
+                    interpol=[cid]
+                    for j in [2,5,6]:
+                        interpol=r_[interpol, subdata[subind==headlast,j]*(1.0-alpha)+subdata[subind==tailfirst,j]*alpha]
+
+                    interpol=r_[interpol,0]
+                    pdata[i,:] = interpol
+        olist = vstack([olist,pdata])
+      
+    olist = olist[1:,:]
+    savetxt(outputfile, olist, fmt='%d\t%d\t%10.5f\t%10.5f\t%d')
+
 
