@@ -301,4 +301,29 @@ def fix_unpolished_com(oplfile):
     olist = olist[1:,:]
     savetxt(outputfile, olist, fmt='%d\t%d\t%10.5f\t%10.5f\t%d')
 
+def listpeakvelocity(oplfile):
+    """Make a list of peak and mean velocities for each track
+    from LifetimeTracks _gt.txt files"""
+    pixelperum = 6.7
+    opl=genfromtxt(oplfile)    
+    
+    outputfile = oplfile.replace(".txt","_peaks.txt")
 
+    cids = unique(opl[:,0])
+    olist = repeat(0,10)    
+
+    for cid in cids:
+        pind, = where(opl[:,0]==cid)
+        subdata = opl[pind,:]
+        #        print subdata.shape
+        fri = subdata[0, 1]
+        #        subind=subdata[:,2] - subdata[0,2]
+        v = ((subdata[2:,2] - subdata[:-2,2])**2+(subdata[2:,3] - subdata[:-2,3])**2)**0.5
+        netdist = ((subdata[-1,2] - subdata[0,2])**2+(subdata[-1,3] - subdata[0,3])**2)**0.5
+        frvmax = subdata[v==max(v),1] + 1
+        for frvm in frvmax:
+            pdata = r_[int(oplfile[:4]), subdata[0,:4], subdata[-1,1], netdist/pixelperum, frvm, max(v)/pixelperum, mean(v)/pixelperum]
+            olist = vstack([olist,pdata])
+
+    olist = olist[1:,:]
+    savetxt(outputfile, olist, fmt='%d\t%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%d\t%10.5f\t%10.5f')
