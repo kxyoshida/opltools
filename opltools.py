@@ -1,5 +1,6 @@
 from numpy import *
 import os
+import pyExcelerator
 
 def findtheinitial(oplfile, pickupfile):
     if oplfile[:4].isdigit():
@@ -327,3 +328,50 @@ def listpeakvelocity(oplfile):
 
     olist = olist[1:,:]
     savetxt(outputfile, olist, fmt='%d\t%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%d\t%10.5f\t%10.5f')
+
+def addvelocitycolumn(oplfile):
+    """Add a column of velocity to oplfile"""
+    pixelperum = 6.7
+    opl=genfromtxt(oplfile)    
+    outputfile = oplfile.replace(".txt","_v.txt")
+
+    cids = unique(opl[:,0])
+    olist = repeat(0,10)    
+
+    for cid in cids:
+        pind, = where(opl[:,0]==cid)
+        subdata = opl[pind,:]
+        fri = subdata[0, 1]
+        v = ((subdata[2:,2] - subdata[:-2,2])**2+(subdata[2:,3] - subdata[:-2,3])**2)**0.5
+        v = r_[nan,v,nan]
+        vr = v/nanmax(v)
+        age = r_[:len(pind)]
+        rage = -r_[len(pind)-1:-1:-1]
+        ager = age*1.0/(len(pind)-1)
+        pdata = column_stack([repeat(int(oplfile[:4]),len(pind)), subdata[:,:4], age, rage, ager,v, vr])
+        olist = vstack([olist,pdata])
+
+    olist = olist[1:,:]
+    savetxt(outputfile, olist, fmt='%d\t%d\t%d\t%10.5f\t%10.5f\t%d\t%d\t%10.5f\t%10.5f\t%10.5f')
+
+def polygontxt2excel(folderpath="Mask"):
+    print folderpath
+    outputfolder = folderpath.replace("Mask","Maskxls")
+    for file in os.listdir(folderpath):
+        hi = file.rfind('fr')
+        if hi != -1:
+            frame=int(file[hi+2:hi+6])
+            filepath=folderpath+'/'+file
+            #            print "hi=",hi, "file=",file,"frame=", frame
+            data=genfromtxt(filepath)
+            wkbook = pyExcelerator.Workbook()
+            wksheet = wkbook.add_sheet("Sheet1")
+            wksheet.write(0,0,"x")
+            wksheet.write(0,1,"y")
+            for row in range(data.shape[0]):
+                for col in range(data.shape[1]):
+                    wksheet.write(row+1,col,data[row,col])
+
+            wkbook.save(outputfolder+"/fr{:04d}.xls".format(frame))
+    return
+    
