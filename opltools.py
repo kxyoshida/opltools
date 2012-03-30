@@ -104,6 +104,7 @@ def pickupopltail(oplfile, pickupfile):
     savetxt(outputfile, trk, fmt='%d\t%d\t%10.5f\t%10.5f')
 
 def makeoplreference(oplfile):
+    """Use this program to generate reference table from opl file"""
     outputfile = oplfile[:-4]+"_ref.txt"	
     opl=genfromtxt(oplfile)
     ids = unique(opl[:,0])
@@ -116,6 +117,7 @@ def makeoplreference(oplfile):
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
 
 def makeptpoplreference(oplfile):
+    """Used to be used with Polish_Track.java. Obsolete."""
     outputfile = oplfile[:-4]+"_ref.txt"	
     opl=genfromtxt(oplfile)
     ids = unique(opl[:,0])
@@ -219,7 +221,8 @@ def relatebacktracedopl(targetopl, refopl):
 
 def fixunpolished(oplfile):
     """Fill the gaps in opl track file by interpolation, which was
-    produced by the failure of gaussian 2D fit in Polish_Track.java"""
+    produced by the failure of gaussian 2D fit in Polish_Track.java.
+    Polish_Track.java is obsolete and the samw with this program"""
     
     assert oplfile.endswith("_polish.txt")
     outputfile = oplfile.replace("_polish","_pol")
@@ -261,7 +264,7 @@ def fixunpolished(oplfile):
 
 def fix_unpolished_com(oplfile):
     """Fill the gaps in opl track file by interpolation, which was
-    produced by the failure of gaussian 2D fit in Polish_Track.java"""
+    produced by the failure of Polish_Track_COM.java"""
     
     assert oplfile.endswith("_compolish.txt")
     outputfile = oplfile.replace("_compolish","_compol")
@@ -355,6 +358,7 @@ def addvelocitycolumn(oplfile):
     savetxt(outputfile, olist, fmt='%d\t%d\t%d\t%10.5f\t%10.5f\t%d\t%d\t%10.5f\t%10.5f\t%10.5f')
 
 def polygontxt2excel(folderpath="Mask"):
+    """Re-write polygon.txt file into excel format using pyExcelerator"""
     print folderpath
     outputfolder = folderpath.replace("Mask","Maskxls")
     for file in os.listdir(folderpath):
