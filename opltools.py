@@ -49,18 +49,30 @@ def findthebothends(oplfile, pickupfile):
     ends = ends[1:,:]
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
 
+# def pickupgoodtrks(oplfile, pickupfile):
+#     """Old version"""
+#     outputfile = oplfile.replace(".txt", "_gt.txt")
+#     opl=genfromtxt(oplfile)
+#     pickup=genfromtxt(pickupfile).astype('int64')
+#     ends = repeat(0,opl.shape[1])
+#     for i in r_[:pickup.size]:
+#         meet, = (opl[:,0]==pickup[i]).nonzero()
+#         if meet.size > 0:
+#             ends = vstack([ends, opl[meet,:]])
+#     ends = ends[1:,:]
+#     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f'+'\t%d'*clip(opl.shape[1]-4,0,4))
+
 def pickupgoodtrks(oplfile, pickupfile):
     outputfile = oplfile.replace(".txt", "_gt.txt")
-    opl=genfromtxt(oplfile)
     pickup=genfromtxt(pickupfile).astype('int64')
-    ends = repeat(0,opl.shape[1])
-    for i in r_[:pickup.size]:
-        meet, = (opl[:,0]==pickup[i]).nonzero()
-        if meet.size > 0:
-            ends = vstack([ends, opl[meet,:]])
-    ends = ends[1:,:]
-    savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f'+'\t%d'*clip(opl.shape[1]-4,0,4))
-
+    with open(oplfile) as file, open(outputfile,'wt') as output:
+        line = file.readline()
+        while (line!=""):
+            sid = int(line.split('\t')[0])
+            if sid in pickup:
+                output.write(line)
+            line = file.readline()            
+    
 def removeoutsidetracks(oplfile):
     """Use results table just tagged OnCell in ImageJ as an input file.
     Now adapted to Post-Track Polished opl"""
@@ -378,4 +390,83 @@ def polygontxt2excel(folderpath="Mask"):
 
             wkbook.save(outputfolder+"/fr{:04d}.xls".format(frame))
     return
+
+def keepgoodrows(xlsfile, pickupfile):
+    """Keep rows of an excel sheet if the spot id is contained in the pickup list"""
+
+    outputxlsfile = xlsfile.replace(".xls","_trimmed.xls")
+    pickup=genfromtxt(pickupfile).astype('int64')
+    wkbook = pyExcelerator.Workbook()
+    wksheet = wkbook.add_sheet("Sheet1")
+    keep = array([0])
+    for sheet_name, values in pyExcelerator.parse_xls(xlsfile, 'cp1251'): # parse_xls(arg) -- default encoding
+        print 'Sheet = "%s"' % sheet_name.encode('cp866', 'backslashreplace')
+        print '----------------'
+        for row_idx, col_idx in sorted(values.keys()):
+            if col_idx == 0 and row_idx != 0:
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                    #                    print '(%d, %d) =' % (row_idx, col_idx), v
+                if v in pickup:
+                    keep = r_[keep, row_idx]
+                    print v
+        
+        for row_idx, col_idx in sorted(values.keys()):
+            if row_idx in keep:
+                row_out, = (keep == row_idx).nonzero()
+                #                print "row_out=",row_out
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                wksheet.write(row_out.item(), col_idx, v)
+                
+        print '----------------'
+
+    wkbook.save(outputxlsfile)
     
+def keeptmprows(xlsfile, folderpath="tmp"):
+    """Eliminate unnecessary lines from the excel file if the corresponding
+    minimovies had not been created in the "tmp" folder"""
+    outputxlsfile = xlsfile.replace(".xls","_trimmed.xls")
+    sids = array([])
+    for file in os.listdir(folderpath):
+        hi = file.rfind('_sp')
+        if hi != -1:
+            index = int(file[hi+3:])
+            sids = r_[sids, index]
+    wkbook = pyExcelerator.Workbook()
+    wksheet = wkbook.add_sheet("Sheet1")
+    keep = array([0])
+    for sheet_name, values in pyExcelerator.parse_xls(xlsfile, 'cp1251'): # parse_xls(arg) -- default encoding
+        print 'Sheet = "%s"' % sheet_name.encode('cp866', 'backslashreplace')
+        print '----------------'
+        for row_idx, col_idx in sorted(values.keys()):
+            if col_idx == 0 and row_idx != 0:
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                    #                    print '(%d, %d) =' % (row_idx, col_idx), v
+                if v in sids:
+                    keep = r_[keep, row_idx]
+                    print v
+        
+        for row_idx, col_idx in sorted(values.keys()):
+            if row_idx in keep:
+                row_out, = (keep == row_idx).nonzero()
+                #                print "row_out=",row_out
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                wksheet.write(row_out.item(), col_idx, v)
+                
+        print '----------------'
+
+    wkbook.save(outputxlsfile)
+
+def extractspotids(oplfile):
+    """Read an opl file and extract spot id to generate a pick-up list"""
+    opl=genfromtxt(oplfile)
+    outputfile = oplfile.replace(".txt","_sid.txt")
+    cids = unique(opl[:,0])
+    savetxt(outputfile, cids[:,newaxis], fmt="%d")
