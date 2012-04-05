@@ -49,18 +49,12 @@ def findthebothends(oplfile, pickupfile):
     ends = ends[1:,:]
     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f\t%d\t%10.5f\t%10.5f')
 
-# def pickupgoodtrks(oplfile, pickupfile):
-#     """Old version"""
-#     outputfile = oplfile.replace(".txt", "_gt.txt")
-#     opl=genfromtxt(oplfile)
-#     pickup=genfromtxt(pickupfile).astype('int64')
-#     ends = repeat(0,opl.shape[1])
-#     for i in r_[:pickup.size]:
-#         meet, = (opl[:,0]==pickup[i]).nonzero()
-#         if meet.size > 0:
-#             ends = vstack([ends, opl[meet,:]])
-#     ends = ends[1:,:]
-#     savetxt(outputfile, ends, fmt='%d\t%d\t%10.5f\t%10.5f'+'\t%d'*clip(opl.shape[1]-4,0,4))
+def extractspotids(oplfile):
+    """Read an opl file and extract spot id to generate a pick-up list"""
+    opl=genfromtxt(oplfile)
+    outputfile = oplfile.replace(".txt","_sid.txt")
+    cids = unique(opl[:,0])
+    savetxt(outputfile, cids[:,newaxis], fmt="%d")
 
 def pickupgoodtrks(oplfile, pickupfile):
     outputfile = oplfile.replace(".txt", "_gt.txt")
@@ -464,9 +458,3 @@ def keeptmprows(xlsfile, folderpath="tmp"):
 
     wkbook.save(outputxlsfile)
 
-def extractspotids(oplfile):
-    """Read an opl file and extract spot id to generate a pick-up list"""
-    opl=genfromtxt(oplfile)
-    outputfile = oplfile.replace(".txt","_sid.txt")
-    cids = unique(opl[:,0])
-    savetxt(outputfile, cids[:,newaxis], fmt="%d")
