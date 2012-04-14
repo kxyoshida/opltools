@@ -408,12 +408,12 @@ def keepgoodrows(xlsfile, pickupfile):
         
         for row_idx, col_idx in sorted(values.keys()):
             if row_idx in keep:
-                row_out, = (keep == row_idx).nonzero()
-                #                print "row_out=",row_out
+                keep_out, = (keep == row_idx).nonzero()
+                #                print "keep_out=",keep_out
                 v = values[(row_idx, col_idx)]
                 if isinstance(v, unicode):
                     v = v.encode('cp866', 'backslashreplace')
-                wksheet.write(row_out.item(), col_idx, v)
+                wksheet.write(keep_out.item(), col_idx, v)
                 
         print '----------------'
 
@@ -447,14 +447,67 @@ def keeptmprows(xlsfile, folderpath="tmp"):
         
         for row_idx, col_idx in sorted(values.keys()):
             if row_idx in keep:
-                row_out, = (keep == row_idx).nonzero()
-                #                print "row_out=",row_out
+                keep_out, = (keep == row_idx).nonzero()
+                #                print "keep_out=",keep_out
                 v = values[(row_idx, col_idx)]
                 if isinstance(v, unicode):
                     v = v.encode('cp866', 'backslashreplace')
-                wksheet.write(row_out.item(), col_idx, v)
+                wksheet.write(keep_out.item(), col_idx, v)
                 
         print '----------------'
 
     wkbook.save(outputxlsfile)
 
+def keepokrows(xlsfile):
+    """Read an excel file and extract well-marked tracks to meet appropriate conditions"""
+    
+    outputxlsfile = xlsfile.replace(".xls","_ok.xls")
+    outputidfile = xlsfile.replace(".xls","_okid.txt")    
+    wkbook = pyExcelerator.Workbook()
+    wksheet = wkbook.add_sheet("Sheet1")
+    keep = array([0])
+    for sheet_name, values in pyExcelerator.parse_xls(xlsfile, 'cp1251'): # parse_xls(arg) -- default encoding
+        print 'Sheet = "%s"' % sheet_name.encode('cp866', 'backslashreplace')
+        print '----------------'
+        for row_idx, col_idx in sorted(values.keys()):
+            if row_idx != 0  and col_idx == 12:
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                    #                    print '(%d, %d) =' % (row_idx, col_idx), v
+                if v=="good" or v=="ok" or v=="lifetime":
+                    keep = r_[keep, row_idx]
+                    #                    print v
+                    #        print keep,keep.size
+        #        keep = unique(keep)
+        trash = array([])        
+        for row_idx, col_idx in sorted(values.keys()):
+            if row_idx in keep:
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                if v == "unstable" or v=="merging" or v=="splitting" or v=="bad tracking" or v=="doublet" or v=="masked" or v=="not clear":
+                    tobedeleted, = (keep == row_idx).nonzero()
+                    trash = r_[trash, tobedeleted]
+        trash = unique(trash)
+        #        print trash,trash.size
+        keep=delete(keep, trash, None)
+        print keep,keep.size
+
+        cids = array([])
+        for row_idx, col_idx in sorted(values.keys()):
+            if row_idx in keep:
+                keep_out, = (keep == row_idx).nonzero()
+                #                print "keep_out=",keep_out
+                v = values[(row_idx, col_idx)]
+                if isinstance(v, unicode):
+                    v = v.encode('cp866', 'backslashreplace')
+                wksheet.write(keep_out.item(), col_idx, v)
+                if row_idx != 0  and col_idx == 0:                
+                    cids = r_[cids, v]
+                
+        print '----------------'
+
+    wkbook.save(outputxlsfile)
+    cids = unique(cids)    
+    savetxt(outputidfile, cids[:,newaxis], fmt="%d")
